@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"os"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -46,16 +47,16 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	data, err := io.ReadAll(file)
+	mediaHeader := header.Header.Get("Content-Type")
+	mediaType, _, err := mime.ParseMediaType(mediaHeader)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't convert image data", err)
+		respondWithError(w, http.StatusBadRequest, "missing Content-Type for thumbnail", err)
 		return
 	}
-	defer file.Close()
 
-	mediaType := header.Header.Get("Content-Type")
-	if mediaType == "" {
-		respondWithError(w, http.StatusBadRequest, "missing Content-Type for thumbnail", nil)
+	fmt.Println(mediaType)
+	if mediaType != "image/jpeg" && mediaType != "image/png" {
+		respondWithError(w, http.StatusBadRequest, "file must be jpeg or png", nil)
 		return
 	}
 
@@ -69,9 +70,24 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	encodedData := base64.StdEncoding.EncodeToString(data)
-	dataURL := "data:" + mediaType + ";base64," + encodedData
-	video.ThumbnailURL = &dataURL
+	dataPath := getAssetPath(videoID, mediaType)
+	dataDiskPath := cfg.getAssetDiskPath(dataPath)
+
+	url := cfg.getAssetURL(dataPath)
+	video.ThumbnailURL = &url
+
+	thumbnailFile, err := os.Create(dataDiskPath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't create file", err)
+		return
+	}
+	defer thumbnailFile.Close()
+
+	_, err = io.Copy(thumbnailFile, file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't copy data from file", err)
+		return
+	}
 
 	err = cfg.db.UpdateVideo(video)
 	if err != nil {
