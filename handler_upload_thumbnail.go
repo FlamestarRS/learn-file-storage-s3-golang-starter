@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"mime"
@@ -70,7 +72,13 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	dataPath := getAssetPath(videoID, mediaType)
+	key := make([]byte, 32)
+	_, err = rand.Read(key)
+	if err != nil {
+		panic("failed to generate random bytes")
+	}
+	encoded := base64.RawURLEncoding.EncodeToString(key)
+	dataPath := getAssetPath([]byte(encoded), mediaType)
 	dataDiskPath := cfg.getAssetDiskPath(dataPath)
 
 	url := cfg.getAssetURL(dataPath)
