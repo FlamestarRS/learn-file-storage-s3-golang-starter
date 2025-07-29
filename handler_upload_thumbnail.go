@@ -48,6 +48,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusInternalServerError, "couldn't retrieve image data", err)
 		return
 	}
+	defer file.Close()
 
 	mediaHeader := header.Header.Get("Content-Type")
 	mediaType, _, err := mime.ParseMediaType(mediaHeader)
@@ -56,7 +57,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fmt.Println(mediaType)
 	if mediaType != "image/jpeg" && mediaType != "image/png" {
 		respondWithError(w, http.StatusBadRequest, "file must be jpeg or png", nil)
 		return
