@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -100,6 +101,18 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	absPath, err := filepath.Abs(videoFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't get abs path", err)
+		return
+	}
+
+	ratio, err := cfg.getVideoAspectRatio(absPath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't get aspect ratio", err)
+		return
+	}
+
 	key := make([]byte, 32)
 	_, err = rand.Read(key)
 	if err != nil {
@@ -108,9 +121,9 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	encoded := base64.RawURLEncoding.EncodeToString(key)
 	dataPath := getAssetPath([]byte(encoded), mediaType)
 
-	resp, err := cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
+	_, err = cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
 		Bucket:      aws.String(cfg.s3Bucket),
-		Key:         aws.String(dataPath),
+		Key:         aws.String(ratio + "/" + dataPath),
 		Body:        videoFile,
 		ContentType: aws.String(mediaType),
 	})
@@ -118,9 +131,8 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusBadRequest, "couldn't upload video to aws", err)
 		return
 	}
-	fmt.Println(resp)
 
-	url := "https://" + cfg.s3Bucket + ".s3." + cfg.s3Region + ".amazonaws.com/" + dataPath
+	url := "https://" + cfg.s3Bucket + ".s3." + cfg.s3Region + ".amazonaws.com/" + ratio + "/" + dataPath
 	video.VideoURL = &url
 
 	err = cfg.db.UpdateVideo(video)
