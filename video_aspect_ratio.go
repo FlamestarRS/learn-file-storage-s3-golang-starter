@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"fmt"
 	"os/exec"
 )
 
@@ -13,7 +13,7 @@ func (cfg *apiConfig) getVideoAspectRatio(filePath string) (string, error) {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		log.Fatal("error running ffprobe")
+		return "", fmt.Errorf("error running ffprobe")
 	}
 
 	type ffprobeOutput struct {
@@ -26,7 +26,7 @@ func (cfg *apiConfig) getVideoAspectRatio(filePath string) (string, error) {
 	var dimensions ffprobeOutput
 	err = json.Unmarshal(out.Bytes(), &dimensions)
 	if err != nil {
-		log.Fatal("error unmarhsalling ffprobe")
+		return "", fmt.Errorf("error unmarhsalling ffprobe")
 	}
 
 	aspectRatio := ""
