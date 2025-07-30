@@ -132,10 +132,11 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	}
 	encoded := base64.RawURLEncoding.EncodeToString(key)
 	dataPath := getAssetPath([]byte(encoded), mediaType)
+	fullKey := ratio + "/" + dataPath
 
 	_, err = cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
 		Bucket:      aws.String(cfg.s3Bucket),
-		Key:         aws.String(ratio + "/" + dataPath),
+		Key:         aws.String(fullKey),
 		Body:        processedFile,
 		ContentType: aws.String(mediaType),
 	})
@@ -144,7 +145,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	url := "https://" + cfg.s3Bucket + ".s3." + cfg.s3Region + ".amazonaws.com/" + ratio + "/" + dataPath
+	url := cfg.s3Bucket + "," + fullKey
 	video.VideoURL = &url
 
 	err = cfg.db.UpdateVideo(video)
@@ -153,5 +154,11 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, video)
+	presignedVideo, err := cfg.dbVideoToSignedVideo(video)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "error presigning video handlerUploadVideo", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, presignedVideo)
 }
