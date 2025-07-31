@@ -1,16 +1,6 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"strings"
-	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
-)
-
+/*
 func (cfg *apiConfig) generatePresignedURL(bucket, key string, expireTime time.Duration) (string, error) {
 	client := s3.NewPresignClient(cfg.s3Client)
 	req, err := client.PresignGetObject(
@@ -45,3 +35,4 @@ func (cfg *apiConfig) dbVideoToSignedVideo(video database.Video) (database.Video
 
 	return video, nil
 }
+*/
